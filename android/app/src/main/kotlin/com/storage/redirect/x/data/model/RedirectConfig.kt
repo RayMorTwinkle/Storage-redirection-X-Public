@@ -127,6 +127,16 @@ data class RedirectConfig(
         return updateAppConfig(newConfig)
     }
 
+    // 切换应用的重定向模式（白名单/黑名单）
+    fun setRedirectMode(packageName: String, mode: RedirectMode): RedirectConfig {
+        val existing = getAppConfig(packageName)
+            ?: return updateAppConfig(
+                AppRedirectConfig(packageName = packageName, isEnabled = true, mode = mode)
+            )
+        if (existing.mode == mode) return this
+        return updateAppConfig(existing.copy(mode = mode))
+    }
+
     companion object {
         // 标准化允许路径规则：支持 ! 前缀和通配符
         fun normalizeAllowedPath(raw: String): String? {

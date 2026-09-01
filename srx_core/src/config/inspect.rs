@@ -1,5 +1,5 @@
 use super::SettingsHub;
-use crate::domain::PathMapping;
+use crate::domain::{PathMapping, RedirectMode};
 use crate::platform;
 use crate::redirect::policy;
 use std::sync::atomic::Ordering;
@@ -111,6 +111,26 @@ impl SettingsHub {
             return Vec::new();
         }
         user.excluded_real_paths.clone()
+    }
+
+    pub fn get_redirect_mode(&self, package_name: &str, app_uid: i32) -> RedirectMode {
+        let state = self.state.lock().unwrap_or_else(|err| err.into_inner());
+        if !state.is_loaded || package_name == SELF_PACKAGE_NAME {
+            return RedirectMode::default();
+        }
+        let app = match state.apps.get(package_name) {
+            Some(app) => app,
+            None => return RedirectMode::default(),
+        };
+        let user_id = platform::user_id_from_uid(app_uid);
+        let user = match app.user_profiles.get(&user_id) {
+            Some(user) => user,
+            None => return RedirectMode::default(),
+        };
+        if !user.is_enabled {
+            return RedirectMode::default();
+        }
+        user.mode.clone()
     }
 
     pub fn get_path_mappings(&self, package_name: &str, app_uid: i32) -> Vec<PathMapping> {

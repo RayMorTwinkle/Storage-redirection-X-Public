@@ -8,8 +8,10 @@ pub struct CompanionMountRequest {
     pub app_data_dir: String,
     pub redirect_target: String,
     pub allowed_real_paths: Vec<String>,
+    pub excluded_real_paths: Vec<String>,
     pub path_mappings: Vec<PathMapping>,
     pub is_mapping_mode_only: bool,
+    pub is_blacklist_mode: bool,
 }
 
 // 从 JSON 负载解析挂载请求，校验必填字段
@@ -39,8 +41,13 @@ pub fn parse_companion_mount_request(payload: &str) -> Result<CompanionMountRequ
         .get("mapping_mode_only")
         .and_then(|v| v.as_bool())
         .unwrap_or(false);
+    request.is_blacklist_mode = value
+        .get("blacklist_mode")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
 
     request.allowed_real_paths = parse_allowed_real_paths(value.get("allowed_real_paths"));
+    request.excluded_real_paths = parse_allowed_real_paths(value.get("excluded_real_paths"));
     request.path_mappings = parse_path_mappings(value.get("path_mappings"));
 
     if request.pid <= 0 || request.uid < 0 || request.package_name.is_empty() {

@@ -7,6 +7,7 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -36,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import com.storage.redirect.x.R
 import com.storage.redirect.x.data.model.PathValidationResult
 import com.storage.redirect.x.data.model.RedirectConfig
+import com.storage.redirect.x.data.model.RedirectMode
 import com.storage.redirect.x.data.model.StoragePathMapping
 import com.storage.redirect.x.data.repository.ConfigRepository
 import com.storage.redirect.x.data.repository.PathBrowserRepository
@@ -163,6 +165,7 @@ fun RuleConfigPage(packageName: String, appName: String, userId: Int = 0, onBack
     val allowedPaths = appConfig?.allowedRealPaths ?: emptyList()
     val pathMappings = appConfig?.pathMappings ?: emptyList()
     val isRedirected = config.redirectApps.contains(packageName)
+    val currentMode = appConfig?.mode ?: RedirectMode.Whitelist
 
     var browseRoute by remember { mutableStateOf<PathBrowseRoute?>(null) }
 
@@ -286,6 +289,35 @@ fun RuleConfigPage(packageName: String, appName: String, userId: Int = 0, onBack
                                 saveConfig(newConfig)
                             }
                         )
+                    }
+                }
+
+                // 重定向模式：白名单 / 黑名单
+                if (isRedirected) {
+                    item {
+                        Spacer(Modifier.height(RULE_CONFIG_SECTION_TOP_SPACING))
+                        Card(modifier = Modifier.fillMaxWidth()) {
+                            Column(modifier = Modifier.padding(RULE_CONFIG_CARD_CONTENT_PADDING)) {
+                                Text(
+                                    text = stringResource(R.string.rule_config_mode_title),
+                                    style = MiuixTheme.textStyles.title4,
+                                    color = MiuixTheme.colorScheme.primary
+                                )
+                                Spacer(Modifier.height(RULE_CONFIG_ITEM_SPACING))
+                                Text(
+                                    text = stringResource(R.string.rule_config_mode_summary),
+                                    style = MiuixTheme.textStyles.body2,
+                                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary
+                                )
+                                Spacer(Modifier.height(RULE_CONFIG_ITEM_SPACING))
+                                RedirectModeOptionRow(
+                                    mode = currentMode,
+                                    onModeSelect = { mode ->
+                                        saveConfig(config.setRedirectMode(packageName, mode))
+                                    }
+                                )
+                            }
+                        }
                     }
                 }
 
@@ -849,6 +881,45 @@ private fun DialogButtonRow(
                 }
             },
             modifier = Modifier.weight(1f)
+        )
+    }
+}
+
+// 重定向模式选择行（白名单/黑名单）
+@Composable
+private fun RedirectModeOptionRow(
+    mode: RedirectMode,
+    onModeSelect: (RedirectMode) -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = stringResource(R.string.rule_config_mode_whitelist),
+            style = MiuixTheme.textStyles.body2,
+            color = if (mode == RedirectMode.Whitelist) {
+                MiuixTheme.colorScheme.primary
+            } else {
+                MiuixTheme.colorScheme.onSurfaceVariantSummary
+            },
+            modifier = Modifier
+                .weight(1f)
+                .clickable { onModeSelect(RedirectMode.Whitelist) }
+                .padding(vertical = RULE_CONFIG_LIST_ROW_VERTICAL_PADDING)
+        )
+        Text(
+            text = stringResource(R.string.rule_config_mode_blacklist),
+            style = MiuixTheme.textStyles.body2,
+            color = if (mode == RedirectMode.Blacklist) {
+                MiuixTheme.colorScheme.primary
+            } else {
+                MiuixTheme.colorScheme.onSurfaceVariantSummary
+            },
+            modifier = Modifier
+                .weight(1f)
+                .clickable { onModeSelect(RedirectMode.Blacklist) }
+                .padding(vertical = RULE_CONFIG_LIST_ROW_VERTICAL_PADDING)
         )
     }
 }

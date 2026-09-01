@@ -1,5 +1,5 @@
 // 路径路由器：重定向决策核心，处理映射、允许列表、排除列表
-use crate::domain::PathMapping;
+use crate::domain::{PathMapping, RedirectMode};
 use crate::platform::{self, paths};
 use once_cell::sync::Lazy;
 use std::sync::RwLock;
@@ -42,6 +42,7 @@ impl RedirectDecision {
 struct RouterState {
     current_package: String,
     user_id: i32,
+    mode: RedirectMode,
     storage_root: String,
     redirect_target: String,
     allowed_real_paths: Vec<String>,
@@ -54,6 +55,7 @@ impl RouterState {
         Self {
             current_package: String::new(),
             user_id: 0,
+            mode: RedirectMode::default(),
             storage_root: String::new(),
             redirect_target: String::new(),
             allowed_real_paths: Vec::new(),
@@ -108,11 +110,12 @@ impl PathRouter {
         true
     }
 
-    // 配置重定向上下文：包名、允许路径、路径映射
+    // 配置重定向上下文：包名、模式、允许路径、路径映射
     pub fn configure(
         &self,
         package_name: &str,
         app_uid: i32,
+        mode: RedirectMode,
         redirect_target: &str,
         allowed_real_paths: &[String],
         excluded_real_paths: &[String],
@@ -121,6 +124,7 @@ impl PathRouter {
         let mut state = self.state.write().unwrap_or_else(|err| err.into_inner());
         state.current_package = package_name.to_string();
         state.user_id = platform::user_id_from_uid(app_uid);
+        state.mode = mode;
         state.storage_root = format!("/storage/emulated/{}", state.user_id);
         state.redirect_target =
             paths::resolve_user_path(&paths::normalize(redirect_target), state.user_id);
@@ -382,6 +386,29 @@ impl PathRouter {
             return decision;
         }
         let allow_ms = paths::monotonic_ms().saturating_sub(allow_started_ms);
+
+        // 黑名单模式：排除列表（黑名单）路径已在前面被重定向到隔离区，
+        // 余下未命中黑名单的存储路径一律放行（默认允许访问公共目录）
+        if state.mode.is_blacklist() {
+            self.stats.allowed.fetch_add(1, Ordering::Relaxed);
+            let decision = RedirectDecision::allow();
+            log_router_perf(
+                "blacklist_default",
+                original_path,
+                &normalized,
+                &resolved,
+                map_count,
+                allow_count,
+                excl_count,
+                normalize_ms,
+                lock_ms,
+                map_ms,
+                allow_ms,
+                perf_started_ms,
+                &decision,
+            );
+            return decision;
+        }
 
         let redirected =
             generate_redirected_path(&state.storage_root, &state.redirect_target, &resolved);

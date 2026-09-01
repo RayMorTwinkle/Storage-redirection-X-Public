@@ -187,6 +187,10 @@
     <string name="rule_config_enable_redirect">Enable Redirect</string>
     <string name="rule_config_redirect_enabled">Redirect enabled</string>
     <string name="rule_config_redirect_disabled">Redirect disabled</string>
+    <string name="rule_config_mode_title">Redirect Mode</string>
+    <string name="rule_config_mode_summary">Whitelist isolates all storage and allows only the listed paths. Blacklist allows all public storage and isolates only the listed (excluded) paths.</string>
+    <string name="rule_config_mode_whitelist">Whitelist</string>
+    <string name="rule_config_mode_blacklist">Blacklist</string>
     <string name="rule_config_allowed_paths">Allowed Paths</string>
     <string name="rule_config_path_mappings">Path Mappings</string>
     <string name="rule_config_add_path">Add Path</string>

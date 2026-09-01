@@ -1,4 +1,4 @@
-use crate::domain::PathMapping;
+use crate::domain::{PathMapping, RedirectMode};
 use crate::platform::module_paths;
 use once_cell::sync::Lazy;
 use std::collections::{HashMap, HashSet};
@@ -17,6 +17,7 @@ pub mod watcher;
 #[derive(Clone)]
 pub struct UserProfile {
     pub is_enabled: bool,
+    pub mode: RedirectMode,
     pub allowed_real_paths: Vec<String>,
     pub excluded_real_paths: Vec<String>,
     pub path_mappings: Vec<PathMapping>,

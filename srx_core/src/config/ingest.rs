@@ -1,5 +1,5 @@
 use super::{AppProfile, SettingsState, UserProfile};
-use crate::domain::PathMapping;
+use crate::domain::{PathMapping, RedirectMode};
 use crate::platform::paths;
 use serde_json::Value;
 use std::collections::HashMap;
@@ -72,6 +72,7 @@ pub fn parse_app_config(state: &mut SettingsState, package_name: &str, json_cont
 
         let mut user_profile = UserProfile {
             is_enabled: true,
+            mode: RedirectMode::default(),
             allowed_real_paths: Vec::new(),
             excluded_real_paths: Vec::new(),
             path_mappings: Vec::new(),
@@ -81,6 +82,12 @@ pub fn parse_app_config(state: &mut SettingsState, package_name: &str, json_cont
             && let Some(flag) = enabled.as_bool()
         {
             user_profile.is_enabled = flag;
+        }
+
+        if let Some(mode) = user_obj.get("mode")
+            && let Some(mode_str) = mode.as_str()
+        {
+            user_profile.mode = RedirectMode::from_str(mode_str);
         }
 
         let storage_root = format!("/storage/emulated/{}", user_id);

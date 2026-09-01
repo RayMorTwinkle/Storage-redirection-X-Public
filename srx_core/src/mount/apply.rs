@@ -408,9 +408,135 @@ impl MountPlanner {
 
         true
     }
-}
 
-fn reduce_allowed_real_path_rules(rules: Vec<String>) -> Vec<String> {
+    // 黑名单模式挂载：不整体隔离 storage，仅对黑名单目录（excluded）在隔离区建立对应目录并 bind 过去，
+    // 其余公共目录保持真实可见。黑名单模式下 excluded_real_paths 即需要被隔离的目录。
+    pub fn apply_blacklist_redirect(
+        &mut self,
+        excluded_real_paths: &[String],
+        path_mappings: &[PathMapping],
+    ) -> bool {
+        let resolved_target_storage =
+            self.resolve_user_path(&self.normalize_path(&self.redirect_target));
+        if resolved_target_storage.is_empty() {
+            log::error!("redirect target empty");
+            return false;
+        }
+
+        let resolved_target = self.to_data_media_backend_path(&resolved_target_storage);
+        if resolved_target.is_empty() {
+            log::error!("redirect target not under storage/emulated: {}", resolved_target_storage);
+            return false;
+        }
+
+        log::info!(
+            "blacklist mount pkg={} uid={} user={} target={} excl={} map={}",
+            self.package_name,
+            self.app_uid,
+            self.user_id,
+            resolved_target_storage,
+            excluded_real_paths.len(),
+            path_mappings.len()
+        );
+
+        if !self.ensure_mount_namespace_prepared() {
+            log::error!("mount ns init failed");
+            return false;
+        }
+
+        let storage_path = format!("/storage/emulated/{}", self.user_id);
+        let data_media_root = format!("/data/media/{}", self.user_id);
+        if !fs::is_directory(&data_media_root) {
+            log::error!("data/media missing: {}", data_media_root);
+            return false;
+        }
+
+        if !self.ensure_directory_exists(&resolved_target, false) {
+            log::error!("mkdir redirect failed: {}", resolved_target);
+            return false;
+        }
+        if !self.ensure_writable_mapped_directory(&resolved_target, self.app_uid) {
+            log::warn!("fix redirect root perm failed: {}", resolved_target);
+        }
+        self.repair_redirect_target_directories(&resolved_target);
+
+        let mut is_any_applied = false;
+        for excl_rule in excluded_real_paths {
+            let resolved = self.resolve_user_path(&self.resolve_placeholders(&self.normalize_path(excl_rule)));
+            if resolved.is_empty() {
+                continue;
+            }
+            if paths::has_unsafe_segments(&resolved) {
+                continue;
+            }
+            if resolved == storage_path {
+                log::warn!("skip blacklist (whole storage not supported): {}", resolved);
+                continue;
+            }
+            if !paths::starts_with(&resolved, &format!("{}/", storage_path)) {
+                log::warn!("skip blacklist (not under storage): {}", resolved);
+                continue;
+            }
+
+            // 隔离区内的对应路径：把黑名单目录重定向到隔离区下的相对位置
+            let mut relative = resolved[storage_path.len()..].to_string();
+            if relative.starts_with('/') {
+                relative.remove(0);
+            }
+            if relative.is_empty() {
+                continue;
+            }
+            let isolated_target = paths::join(&resolved_target, &relative);
+            if !self.ensure_directory_exists(&isolated_target, true) {
+                log::warn!("mkdir isolated failed: {}", isolated_target);
+                continue;
+            }
+
+            // 在 storage 黑名单位置 bind 隔离区目录，使 app 访问该目录落到隔离区
+            if !self.ensure_directory_exists(&resolved, true) {
+                log::warn!("mkdir blacklist path failed: {}", resolved);
+                continue;
+            }
+            let mut is_applied = false;
+            let _ = self.bind_mount_with_storage_aliases(
+                &isolated_target,
+                &resolved,
+                true,
+                super::PrimaryMountFailure::StopCurrentTarget,
+                None,
+                Some("blacklist alias mount failed"),
+                Some("blacklist alias mount ok"),
+                Some(&mut is_applied),
+            );
+            if is_applied {
+                is_any_applied = true;
+                log::info!("blacklist isolated {} -> {}", resolved, isolated_target);
+            }
+        }
+
+        if !path_mappings.is_empty() {
+            let resolved_mappings = self.resolve_path_mappings(path_mappings, &storage_path);
+            log::info!(
+                "blacklist map resolve in={} effective={}",
+                path_mappings.len(),
+                resolved_mappings.len()
+            );
+            let mut is_map_applied = false;
+            let _ = self.apply_resolved_path_mappings(
+                &resolved_mappings,
+                &storage_path,
+                &data_media_root,
+                true,
+                false,
+                Some(&mut is_map_applied),
+            );
+            let _ = is_map_applied;
+        }
+
+        log::info!("blacklist redirect done applied={}", is_any_applied);
+        true
+    }
+}
     let mut effective: Vec<String> = Vec::with_capacity(rules.len());
     for rule in rules {
         let mut is_redundant = false;

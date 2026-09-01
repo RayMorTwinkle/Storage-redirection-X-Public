@@ -1,4 +1,36 @@
 #[derive(Clone, Debug, PartialEq, Eq)]
+pub enum RedirectMode {
+    Whitelist,
+    Blacklist,
+}
+
+impl Default for RedirectMode {
+    fn default() -> Self {
+        Self::Whitelist
+    }
+}
+
+impl RedirectMode {
+    pub fn from_str(value: &str) -> Self {
+        match value.trim().to_ascii_lowercase().as_str() {
+            "black" | "blacklist" => Self::Blacklist,
+            _ => Self::Whitelist,
+        }
+    }
+
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::Whitelist => "whitelist",
+            Self::Blacklist => "blacklist",
+        }
+    }
+
+    pub fn is_blacklist(&self) -> bool {
+        matches!(self, Self::Blacklist)
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PathMapping {
     pub request_path: String,
     pub final_path: String,

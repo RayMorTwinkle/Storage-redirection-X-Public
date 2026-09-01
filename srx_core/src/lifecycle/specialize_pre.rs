@@ -406,11 +406,13 @@ impl RuntimeFlow {
         let allowed_real_paths = config.get_allowed_real_paths(&self.package_name, self.app_uid);
         let excluded_real_paths = config.get_excluded_real_paths(&self.package_name, self.app_uid);
         let mut path_mappings = config.get_path_mappings(&self.package_name, self.app_uid);
+        let redirect_mode = config.get_redirect_mode(&self.package_name, self.app_uid);
         let mut is_mapping_mode_only = false;
 
         log::info!(
-            "config sum pkg={} allow={} excl={} map={}",
+            "config sum pkg={} mode={} allow={} excl={} map={}",
             self.package_name,
+            redirect_mode.as_str(),
             allowed_real_paths.len(),
             excluded_real_paths.len(),
             path_mappings.len()
@@ -456,6 +458,7 @@ impl RuntimeFlow {
             PathRouter::instance().configure(
                 &self.package_name,
                 self.app_uid,
+                redirect_mode.clone(),
                 &redirect_base,
                 &[],
                 &[],
@@ -465,6 +468,7 @@ impl RuntimeFlow {
             PathRouter::instance().configure(
                 &self.package_name,
                 self.app_uid,
+                redirect_mode.clone(),
                 &redirect_base,
                 &allowed_real_paths,
                 &excluded_real_paths,
@@ -533,8 +537,10 @@ impl RuntimeFlow {
             &self.app_data_dir,
             &redirect_base,
             &allowed_real_paths,
+            &excluded_real_paths,
             &path_mappings,
             is_mapping_mode_only,
+            redirect_mode.is_blacklist(),
         );
         let payload_ms = monotonic_ms().saturating_sub(payload_started_ms);
         let payload_bytes = payload.len();
@@ -768,8 +774,10 @@ fn build_companion_request_payload(
     app_data_dir: &str,
     redirect_target: &str,
     allowed_real_paths: &[String],
+    excluded_real_paths: &[String],
     path_mappings: &[PathMapping],
     is_mapping_mode_only: bool,
+    is_blacklist: bool,
 ) -> String {
     let mut mappings = Vec::new();
     for mapping in path_mappings {
@@ -786,7 +794,9 @@ fn build_companion_request_payload(
         "app_data_dir": app_data_dir,
         "redirect_target": redirect_target,
         "allowed_real_paths": allowed_real_paths,
+        "excluded_real_paths": excluded_real_paths,
         "mapping_mode_only": is_mapping_mode_only,
+        "blacklist_mode": is_blacklist,
         "path_mappings": mappings,
     });
 

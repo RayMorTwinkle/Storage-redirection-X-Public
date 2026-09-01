@@ -187,6 +187,10 @@
     <string name="rule_config_enable_redirect">开启重定向</string>
     <string name="rule_config_redirect_enabled">已启用重定向</string>
     <string name="rule_config_redirect_disabled">未启用重定向</string>
+    <string name="rule_config_mode_title">重定向模式</string>
+    <string name="rule_config_mode_summary">白名单模式默认隔离所有存储，仅放行列表内的路径；黑名单模式默认放行全部公共存储，仅隔离列表内（排除）的路径。</string>
+    <string name="rule_config_mode_whitelist">白名单</string>
+    <string name="rule_config_mode_blacklist">黑名单</string>
     <string name="rule_config_allowed_paths">允许访问路径</string>
     <string name="rule_config_path_mappings">路径映射</string>
     <string name="rule_config_add_path">添加路径</string>
