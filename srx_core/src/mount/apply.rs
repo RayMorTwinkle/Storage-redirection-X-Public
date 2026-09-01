@@ -537,6 +537,8 @@ impl MountPlanner {
         true
     }
 }
+
+fn reduce_allowed_real_path_rules(rules: Vec<String>) -> Vec<String> {
     let mut effective: Vec<String> = Vec::with_capacity(rules.len());
     for rule in rules {
         let mut is_redundant = false;
