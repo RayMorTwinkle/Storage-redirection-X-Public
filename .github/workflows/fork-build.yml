@@ -1,0 +1,66 @@
+name: 云端构建精简版（fork）
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: 构建 arm64-v8a
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v7.0.0
+
+      - name: 配置 Java
+        uses: actions/setup-java@v5.4.0
+        with:
+          distribution: temurin
+          java-version: '25'
+
+      - name: 配置 Python
+        uses: actions/setup-python@v6.3.0
+        with:
+          python-version: '3.x'
+
+      - name: 配置 Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android
+
+      - name: 配置 Android SDK
+        uses: android-actions/setup-android@v4.0.1
+        with:
+          packages: platform-tools
+
+      - name: 安装主机编译工具
+        run: sudo apt-get update && sudo apt-get install -y cmake ninja-build
+
+      - name: 安装 NDK 和 CMake
+        shell: bash
+        run: |
+          (yes | sdkmanager --licenses > /dev/null) || true
+          ndk_version="29.0.14206865"
+          latest_cmake_pkg=$(sdkmanager --list | tr -d '\r' | grep -oE 'cmake;[0-9][0-9.]+' | sort -Vu | tail -n 1)
+          sdkmanager "ndk;${ndk_version}" "${latest_cmake_pkg}"
+          echo "ANDROID_NDK_HOME=${ANDROID_SDK_ROOT}/ndk/${ndk_version}" >> "${GITHUB_ENV}"
+
+      - name: 构建 Zygisk (arm64-v8a)
+        run: python scripts/build.py build-zygisk --abi arm64-v8a -v
+
+      - name: 构建 APK (arm64-v8a)
+        run: python scripts/build.py build-apk --abi arm64-v8a -v
+
+      - name: 上传产物
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: srx-arm64-v8a
+          path: |
+            build/zygisk/
+            build/apk/
+          if-no-files-found: error
+          retention-days: 30
