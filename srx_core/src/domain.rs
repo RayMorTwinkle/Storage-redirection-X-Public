@@ -1,13 +1,8 @@
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Default)]
 pub enum RedirectMode {
+    #[default]
     Whitelist,
     Blacklist,
-}
-
-impl Default for RedirectMode {
-    fn default() -> Self {
-        Self::Whitelist
-    }
 }
 
 impl RedirectMode {

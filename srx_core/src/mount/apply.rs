@@ -425,7 +425,10 @@ impl MountPlanner {
 
         let resolved_target = self.to_data_media_backend_path(&resolved_target_storage);
         if resolved_target.is_empty() {
-            log::error!("redirect target not under storage/emulated: {}", resolved_target_storage);
+            log::error!(
+                "redirect target not under storage/emulated: {}",
+                resolved_target_storage
+            );
             return false;
         }
 

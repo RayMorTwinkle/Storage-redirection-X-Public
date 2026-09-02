@@ -111,6 +111,7 @@ impl PathRouter {
     }
 
     // 配置重定向上下文：包名、模式、允许路径、路径映射
+    #[allow(clippy::too_many_arguments)]
     pub fn configure(
         &self,
         package_name: &str,
