@@ -394,7 +394,11 @@ fn handle_child_process(request: &CompanionMountRequest, sock: c_int) -> bool {
         log::info!("map-only mount count={}", request.path_mappings.len());
         mount_mgr.apply_path_mappings_only(&request.path_mappings)
     } else if request.is_blacklist_mode {
-        log::info!("blacklist mount excl={} map={}", request.excluded_real_paths.len(), request.path_mappings.len());
+        log::info!(
+            "blacklist mount excl={} map={}",
+            request.excluded_real_paths.len(),
+            request.path_mappings.len()
+        );
         mount_mgr.apply_blacklist_redirect(&request.excluded_real_paths, &request.path_mappings)
     } else {
         mount_mgr.apply_sdcard_redirect(&request.allowed_real_paths, &request.path_mappings)

@@ -465,7 +465,9 @@ impl MountPlanner {
 
         let mut is_any_applied = false;
         for excl_rule in excluded_real_paths {
-            let resolved = self.resolve_user_path(&self.resolve_placeholders(&self.normalize_path(excl_rule)));
+            let resolved = self.resolve_user_path(
+                &self.resolve_placeholders(&self.normalize_path(excl_rule)),
+            );
             if resolved.is_empty() {
                 continue;
             }
