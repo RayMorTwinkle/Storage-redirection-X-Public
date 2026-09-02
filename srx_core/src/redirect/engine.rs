@@ -186,6 +186,7 @@ pub fn process_redirect_path(hub: &InterceptHub, pathname: &str) -> RedirectDeci
     let raw_enabled_state =
         config.get_user_enabled_in_raw_config(&effective_caller_package, user_id);
     let enabled_in_raw = raw_enabled_state == RawUserEnabledState::Enabled;
+    let caller_mode = config.get_redirect_mode(&effective_caller_package, effective_caller_uid);
     let enable_ms = paths::monotonic_ms().saturating_sub(enable_started_ms);
     if raw_enabled_state == RawUserEnabledState::Disabled || (!enabled_in_memory && !enabled_in_raw)
     {
@@ -378,7 +379,34 @@ pub fn process_redirect_path(hub: &InterceptHub, pathname: &str) -> RedirectDeci
             log_thumbnail_decision("allowed", &decision);
             return decision;
         }
-        writer::CallerRealPathMatch::None => {}
+        writer::CallerRealPathMatch::None => {
+            // 黑名单模式：未命中黑名单（既非排除也非允许）的路径默认放行，
+            // 仅当排除列表命中（黑名单目录）才走 fallback 重定向到隔离目标。
+            if caller_mode.is_blacklist() {
+                let allow_ms = paths::monotonic_ms().saturating_sub(allow_started_ms);
+                let decision = RedirectDecision {
+                    action: RedirectAction::Allow,
+                    new_path: String::new(),
+                };
+                log_writer_redirect_perf(&WriterRedirectPerf {
+                    package_name: &package_name,
+                    exit_reason: "blacklist_default",
+                    caller_package: &effective_caller_package,
+                    path: pathname,
+                    normalized_path: &normalized_path,
+                    reload_ms,
+                    caller_ms,
+                    enable_ms,
+                    mapping_ms,
+                    allow_ms,
+                    fallback_ms: 0,
+                    total_ms: paths::monotonic_ms().saturating_sub(perf_started_ms),
+                    decision: &decision,
+                });
+                log_thumbnail_decision("blacklist_default", &decision);
+                return decision;
+            }
+        }
     }
     let allow_ms = paths::monotonic_ms().saturating_sub(allow_started_ms);
 
