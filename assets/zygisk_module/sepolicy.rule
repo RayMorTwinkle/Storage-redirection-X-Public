@@ -72,3 +72,23 @@ allow mediaprovider ksu unix_dgram_socket sendto
 allow mediaprovider_app ksu unix_dgram_socket sendto
 allow system_server ksu unix_dgram_socket sendto
 allow ksu ksu unix_dgram_socket sendto
+
+# System writer / media provider processes run in their own SELinux domains
+# (e.g. mediaprovider_app) which must be able to read the shared config under
+# /dev/srx_config (shell_data_file) so per-app mode (whitelist/blacklist) and
+# redirect rules take effect for media and other system-writer apps.
+allow mediaprovider shell_data_file dir search
+allow mediaprovider shell_data_file dir open
+allow mediaprovider shell_data_file dir read
+allow mediaprovider shell_data_file dir getattr
+allow mediaprovider shell_data_file file open
+allow mediaprovider shell_data_file file read
+allow mediaprovider shell_data_file file getattr
+allow mediaprovider_app shell_data_file dir search
+allow mediaprovider_app shell_data_file dir open
+allow mediaprovider_app shell_data_file dir read
+allow mediaprovider_app shell_data_file dir getattr
+allow mediaprovider_app shell_data_file file open
+allow mediaprovider_app shell_data_file file read
+allow mediaprovider_app shell_data_file file getattr
+
