@@ -7,7 +7,11 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -82,6 +86,9 @@ private val RULE_CONFIG_DIALOG_BOTTOM_SPACING = 16.dp
 private val RULE_CONFIG_DIALOG_BUTTON_SPACING = 12.dp
 private val RULE_CONFIG_INLINE_HINT_TOP_SPACING = 4.dp
 private val RULE_CONFIG_INLINE_HINT_BOTTOM_SPACING = 8.dp
+private val RULE_CONFIG_MODE_CARD_SPACING = 8.dp
+private val RULE_CONFIG_MODE_CARD_PADDING = 12.dp
+private val RULE_CONFIG_MODE_CARD_DESC_SPACING = 4.dp
 
 @Composable
 fun RuleConfigPage(packageName: String, appName: String, userId: Int = 0, onBack: (modified: Boolean) -> Unit = {}) {
@@ -166,6 +173,19 @@ fun RuleConfigPage(packageName: String, appName: String, userId: Int = 0, onBack
     val pathMappings = appConfig?.pathMappings ?: emptyList()
     val isRedirected = config.redirectApps.contains(packageName)
     val currentMode = appConfig?.mode ?: RedirectMode.Whitelist
+
+    // 黑名单模式下路径列表语义为“禁止访问路径”，展示时去掉内部 `!` 前缀
+    val isBlacklistMode = currentMode == RedirectMode.Blacklist
+    val pathSectionTitle = stringResource(
+        if (isBlacklistMode) R.string.rule_config_excluded_paths else R.string.rule_config_allowed_paths
+    )
+    val pathSectionEmptyText = stringResource(
+        if (isBlacklistMode) R.string.rule_config_no_excluded_paths else R.string.rule_config_no_paths
+    )
+    val pathHintText = stringResource(
+        if (isBlacklistMode) R.string.rule_config_excluded_paths_rule_hint
+        else R.string.rule_config_allowed_paths_rule_hint
+    )
 
     var browseRoute by remember { mutableStateOf<PathBrowseRoute?>(null) }
 
@@ -351,10 +371,10 @@ fun RuleConfigPage(packageName: String, appName: String, userId: Int = 0, onBack
                     }
                 }
 
-                // 允许访问路径
+                // 允许访问路径 / 禁止访问路径（视模式而定）
                 item {
                     SectionHeader(
-                        title = "${stringResource(R.string.rule_config_allowed_paths)} (${allowedPaths.size})",
+                        title = "$pathSectionTitle (${allowedPaths.size})",
                         onInfo = { showAllowedPathHint = !showAllowedPathHint },
                         onAdd = {
                             pathDialogIndex = null
@@ -374,7 +394,7 @@ fun RuleConfigPage(packageName: String, appName: String, userId: Int = 0, onBack
                             Spacer(Modifier.height(RULE_CONFIG_INLINE_HINT_TOP_SPACING))
                             Card(modifier = Modifier.fillMaxWidth()) {
                                 Text(
-                                    text = stringResource(R.string.rule_config_allowed_paths_rule_hint),
+                                    text = pathHintText,
                                     style = MiuixTheme.textStyles.body2,
                                     color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
                                     modifier = Modifier.padding(RULE_CONFIG_CARD_CONTENT_PADDING)
@@ -386,7 +406,7 @@ fun RuleConfigPage(packageName: String, appName: String, userId: Int = 0, onBack
                 }
 
                 if (allowedPaths.isEmpty()) {
-                    item { EmptyPlaceholder(stringResource(R.string.rule_config_no_paths)) }
+                    item { EmptyPlaceholder(pathSectionEmptyText) }
                 } else {
                     itemsIndexed(allowedPaths) { index, path ->
                         Card(modifier = Modifier.fillMaxWidth()) {
@@ -400,14 +420,14 @@ fun RuleConfigPage(packageName: String, appName: String, userId: Int = 0, onBack
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
-                                    text = path,
+                                    text = if (isBlacklistMode) path.removePrefix("!") else path,
                                     modifier = Modifier.weight(1f),
                                     maxLines = 2,
                                     overflow = TextOverflow.Ellipsis
                                 )
                                 IconButton(onClick = {
                                     pathDialogIndex = index
-                                    dialogPathInput = path
+                                    dialogPathInput = if (isBlacklistMode) path.removePrefix("!") else path
                                     pathDialogErrorResId = null
                                     showPathDialog.value = true
                                 }) {
@@ -563,12 +583,18 @@ fun RuleConfigPage(packageName: String, appName: String, userId: Int = 0, onBack
                 when (validation) {
                     is PathValidationResult.Valid -> {
                         pathDialogErrorResId = null
+                        // 黑名单模式下，用户录入的路径即“禁止访问”目录，内部加 `!` 前缀转成 excluded 语义
+                        val normalizedPath = if (isBlacklistMode && !validation.normalized.startsWith("!")) {
+                            "!" + validation.normalized
+                        } else {
+                            validation.normalized
+                        }
                         scope.launch {
                             val newConfig = if (isEditingPath) {
                                 val targetIndex = pathDialogIndex ?: return@launch
-                                config.updateAllowedRealPath(packageName, targetIndex, validation.normalized)
+                                config.updateAllowedRealPath(packageName, targetIndex, normalizedPath)
                             } else {
-                                config.addAllowedRealPath(packageName, validation.normalized)
+                                config.addAllowedRealPath(packageName, normalizedPath)
                             }
                             saveConfig(newConfig)
                         }
@@ -885,7 +911,7 @@ private fun DialogButtonRow(
     }
 }
 
-// 重定向模式选择行（白名单/黑名单）
+// 重定向模式选择行（白名单/黑名单），分段卡片式
 @Composable
 private fun RedirectModeOptionRow(
     mode: RedirectMode,
@@ -893,33 +919,61 @@ private fun RedirectModeOptionRow(
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(RULE_CONFIG_MODE_CARD_SPACING),
+    ) {
+        RedirectModeCard(
+            label = stringResource(R.string.rule_config_mode_whitelist),
+            description = stringResource(R.string.rule_config_mode_whitelist_desc),
+            selected = mode == RedirectMode.Whitelist,
+            onClick = { onModeSelect(RedirectMode.Whitelist) },
+            modifier = Modifier.weight(1f)
+        )
+        RedirectModeCard(
+            label = stringResource(R.string.rule_config_mode_blacklist),
+            description = stringResource(R.string.rule_config_mode_blacklist_desc),
+            selected = mode == RedirectMode.Blacklist,
+            onClick = { onModeSelect(RedirectMode.Blacklist) },
+            modifier = Modifier.weight(1f)
+        )
+    }
+}
+
+@Composable
+private fun RedirectModeCard(
+    label: String,
+    description: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val shape = RoundedCornerShape(10.dp)
+    Column(
+        modifier = modifier
+            .background(
+                color = if (selected) MiuixTheme.colorScheme.primary else MiuixTheme.colorScheme.surfaceContainer,
+                shape = shape
+            )
+            .border(
+                width = 1.dp,
+                color = if (selected) MiuixTheme.colorScheme.primary
+                else MiuixTheme.colorScheme.onSurfaceVariantSummary.copy(alpha = 0.4f),
+                shape = shape
+            )
+            .clickable { onClick() }
+            .padding(RULE_CONFIG_MODE_CARD_PADDING),
     ) {
         Text(
-            text = stringResource(R.string.rule_config_mode_whitelist),
-            style = MiuixTheme.textStyles.body2,
-            color = if (mode == RedirectMode.Whitelist) {
-                MiuixTheme.colorScheme.primary
-            } else {
-                MiuixTheme.colorScheme.onSurfaceVariantSummary
-            },
-            modifier = Modifier
-                .weight(1f)
-                .clickable { onModeSelect(RedirectMode.Whitelist) }
-                .padding(vertical = RULE_CONFIG_LIST_ROW_VERTICAL_PADDING)
+            text = label,
+            style = MiuixTheme.textStyles.title4,
+            color = if (selected) MiuixTheme.colorScheme.onPrimary else MiuixTheme.colorScheme.onSurface,
         )
+        Spacer(Modifier.height(RULE_CONFIG_MODE_CARD_DESC_SPACING))
         Text(
-            text = stringResource(R.string.rule_config_mode_blacklist),
+            text = description,
             style = MiuixTheme.textStyles.body2,
-            color = if (mode == RedirectMode.Blacklist) {
-                MiuixTheme.colorScheme.primary
-            } else {
-                MiuixTheme.colorScheme.onSurfaceVariantSummary
-            },
-            modifier = Modifier
-                .weight(1f)
-                .clickable { onModeSelect(RedirectMode.Blacklist) }
-                .padding(vertical = RULE_CONFIG_LIST_ROW_VERTICAL_PADDING)
+            color = if (selected) MiuixTheme.colorScheme.onPrimary.copy(alpha = 0.9f)
+            else MiuixTheme.colorScheme.onSurfaceVariantSummary,
+            maxLines = 2,
         )
     }
 }

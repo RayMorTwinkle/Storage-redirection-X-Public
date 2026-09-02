@@ -191,7 +191,12 @@
     <string name="rule_config_mode_summary">Whitelist isolates all storage and allows only the listed paths. Blacklist allows all public storage and isolates only the listed (excluded) paths.</string>
     <string name="rule_config_mode_whitelist">Whitelist</string>
     <string name="rule_config_mode_blacklist">Blacklist</string>
+    <string name="rule_config_mode_whitelist_desc">Isolates all storage; allows only the paths below</string>
+    <string name="rule_config_mode_blacklist_desc">Allows all storage; isolates only the paths below</string>
     <string name="rule_config_allowed_paths">Allowed Paths</string>
+    <string name="rule_config_excluded_paths">Disallowed Paths</string>
+    <string name="rule_config_no_excluded_paths">No disallowed paths configured</string>
+    <string name="rule_config_excluded_paths_rule_hint">The paths below will be isolated into the redirect directory.\nSupported wildcards: * ?\n* matches any number of characters, ? matches one character.</string>
     <string name="rule_config_path_mappings">Path Mappings</string>
     <string name="rule_config_add_path">Add Path</string>
     <string name="rule_config_edit_path">Edit Path</string>
