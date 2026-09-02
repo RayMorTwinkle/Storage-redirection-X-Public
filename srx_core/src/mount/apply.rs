@@ -492,8 +492,10 @@ impl MountPlanner {
                 continue;
             }
 
-            // 在 storage 黑名单位置 bind 隔离区目录，使 app 访问该目录落到隔离区
-            if !self.ensure_directory_exists(&resolved, true) {
+            // 在 storage 黑名单位置 bind 隔离区目录，使 app 访问该目录落到隔离区。
+            // 注意：resolved 是真实公共路径，不执行 chown（should_chown=false），
+            // 避免修改公共目录属主影响其他 app；bind 后实际解析到隔离区目录。
+            if !self.ensure_directory_exists(&resolved, false) {
                 log::warn!("mkdir blacklist path failed: {}", resolved);
                 continue;
             }
