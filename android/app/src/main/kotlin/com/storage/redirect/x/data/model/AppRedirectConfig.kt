@@ -30,10 +30,6 @@ data class AppRedirectConfig(
     val pathMappings: List<StoragePathMapping> = emptyList()
 ) {
     val isActive: Boolean get() = isEnabled
-    val isBlacklistMode: Boolean get() = mode == RedirectMode.Blacklist
-
-    // 支持 ! 前缀的规则列表（含排除项）
-    fun allRules(): List<String> = allowedRealPaths
 
     // 序列化为 JSON（用于写入用户维度配置）
     fun toUserJson(): JsonObject {
