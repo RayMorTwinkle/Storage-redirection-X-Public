@@ -11,6 +11,8 @@
 
 Android Zygisk 模块 + Kotlin Compose 管理应用，用于存储重定向。
 
+> **Fork — RayMorTwinkle/Storage-redirection-X-Public `v1.2.56`**：新增**按应用黑白名单模式**、本地 `cmdline-tools` 无 Studio/无模拟器秒级编译链，并用 TextReader 探针完成黑名单 A/B 验证（113→111）。完整改动→编译→测试→发布链路见 [Fork 经验]( ../../docs/EXPERIENCE.md )，上游：`Kindness-Kismet/Storage-redirection-X-Public`。
+
 </div>
 
 ## 快速导航
@@ -38,6 +40,7 @@ Android Zygisk 模块 + Kotlin Compose 管理应用，用于存储重定向。
 - 通过 Zygisk Hook 和挂载命名空间规则拦截应用共享存储访问并执行重定向。
 - 支持多用户分别配置，每个用户都有独立规则，对应 `users.{userId}`。
 - 支持每个应用配置真实路径规则 `allowed_real_paths` 和路径改写规则 `path_mappings`。
+- **Fork：按应用 `黑名单` / `白名单` 模式**——黑名单默认放行所有公共存储、仅隔离 `!` 前缀的排除路径；白名单为原有“默认隔离”行为。可通过挂载命名空间（`nsenter`）与 TextReader A/B（113→111）验证。
 - 管理应用支持共享 UID 同步，关联包可以保持一致规则。
 - 提供运行日志、文件监控日志、模板、备份还原、更新检查和界面设置。
 - 提供可选 FuseFixer，用于提升 MediaProvider FUSE 路径兼容性。
@@ -257,7 +260,19 @@ Android Zygisk 模块 + Kotlin Compose 管理应用，用于存储重定向。
 }
 ```
 
-## 构建命令
+## 构建命令（Fork：本地 cmdline-toolchain）
+
+本 fork 支持**无 Android Studio、无模拟器、本机秒级编译**（`me-android-cmdline-toolchain-v1`，见 `~/.config/opencode/skills/me-android-cmdline-toolchain-v1/SKILL.md`），验证走 `me-android-bridge` 真机 `T6PA04CJ6EH01DD`。
+
+```bash
+# 一次性：brew install --cask android-commandlinetools && sdkmanager "platforms;android-36" "build-tools;36.0.0"
+./gradlew assembleDebug  # 首次 1m18s，后续数秒；产物 app/build/outputs/apk/debug/app-debug.apk
+adb -s T6PA04CJ6EH01DD install -r app/build/outputs/apk/debug/app-debug.apk
+```
+
+CI 仍通过 GitHub Actions 构建（`build-zygisk` + `build-apk`，arm64-v8a/x86_64，`v*` tag 自动发版）。本地 vs CI 取舍、compileSdk 36 坑、TextReader 探针见 `docs/EXPERIENCE.md`。
+
+## 构建命令（上游）
 
 支持的 ABI:
 

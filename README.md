@@ -11,6 +11,8 @@
 
 Android Zygisk module + Kotlin Compose manager app for storage redirection.
 
+> **Fork — RayMorTwinkle/Storage-redirection-X-Public `v1.2.56`**: Adds **per-app blacklist/whitelist mode**, local `cmdline-tools` build chain (no Studio/no emulator), and TextReader-based blacklist verification. See [Fork Experience](docs/EXPERIENCE.md) for full lifecycle (mod → build → test → release). Original upstream: `Kindness-Kismet/Storage-redirection-X-Public`.
+
 </div>
 
 ## Quick Navigation
@@ -38,6 +40,7 @@ Android Zygisk module + Kotlin Compose manager app for storage redirection.
 - Redirects app shared-storage operations through Zygisk hooks and mount namespace rules.
 - Supports separate rules for each Android user (`users.{userId}`) on multi-user devices.
 - Supports per-app real-path rules (`allowed_real_paths`) and path rewrite rules (`path_mappings`).
+- **Fork: per-app `blacklist` / `whitelist` mode** — blacklist allows all public storage by default and isolates only `!`-prefixed excluded paths; whitelist is the original isolate-all behaviour. Verifiable via mount-namespace (`nsenter`) + TextReader A/B (113→111).
 - Supports shared UID synchronization in the manager app so related packages keep consistent rules.
 - Provides runtime logs, file monitor logs, templates, backup/restore, update checks, and UI settings.
 - Provides optional FuseFixer for MediaProvider FUSE path compatibility.
@@ -257,7 +260,19 @@ Config directory on device:
 }
 ```
 
-## Build
+## Build (Fork: local cmdline-toolchain)
+
+This fork supports **local seconds-level builds without Android Studio or emulator** via `me-android-cmdline-toolchain-v1` (see `~/.config/opencode/skills/me-android-cmdline-toolchain-v1/SKILL.md`). Validation uses `me-android-bridge` (`T6PA04CJ6EH01DD`).
+
+```bash
+# once: brew install --cask android-commandlinetools && sdkmanager "platforms;android-36" "build-tools;36.0.0"
+./gradlew assembleDebug  # 1m18s first, seconds after; output app/build/outputs/apk/debug/app-debug.apk
+adb -s T6PA04CJ6EH01DD install -r app/build/outputs/apk/debug/app-debug.apk
+```
+
+CI still builds via GitHub Actions (`build-zygisk` + `build-apk` for arm64-v8a/x86_64, release on tag `v*`). See `docs/EXPERIENCE.md` for local vs CI tradeoffs, compileSdk 36 pitfall, and TextReader probe.
+
+## Build (Upstream)
 
 Supported ABIs:
 
